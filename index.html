@@ -1,0 +1,1112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>세계 무역 항구</title>
+<meta name="description" content="초등 6학년 무역 게임 — 나라마다 다른 자원을 무역하고 상품을 만들어 팔며 수요와 공급을 체험해요.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: 항구 시세판(위) → 나라 배(카드) 격자 → 무역 일지. 한 화면(전자칠판)에서 모둠이 번갈아 조작 */
+:root{
+  --bg:#E7EEF1; --paper:#FFFFFF; --paper2:#F3F7F9; --ink:#132433; --muted:#5B6C7B; --line:#C9D5DC;
+  --accent:#D94A22; --accent-ink:#FFFFFF;
+  --up:#D12F2F; --down:#2463C9; --ok:#1F8A4D;
+  --r-wheat:#C99412; --r-wood:#2E8656; --r-iron:#5E6E82; --r-cotton:#8A5CC4;
+  --t1:#C99412; --t2:#2E8656; --t3:#4F6378; --t4:#8A5CC4; --t5:#D0682B; --t6:#1F7F99;
+  --shadow:0 1px 0 rgba(19,36,51,.06),0 6px 18px -10px rgba(19,36,51,.35);
+  --f-display:"Jua","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1821; --paper:#16232F; --paper2:#1C2B38; --ink:#E5EDF2; --muted:#93A5B3; --line:#2B3C4B;
+  --accent:#FF7447; --accent-ink:#1A0E08; --up:#FF6B6B; --down:#6EA2FF; --ok:#4CC383;
+  --r-wheat:#E8B536; --r-wood:#4CB77D; --r-iron:#9AAABD; --r-cotton:#B08BEA;
+  --t1:#E8B536; --t2:#4CB77D; --t3:#8FA3B8; --t4:#B08BEA; --t5:#F08C4E; --t6:#4BB7D3;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1821; --paper:#16232F; --paper2:#1C2B38; --ink:#E5EDF2; --muted:#93A5B3; --line:#2B3C4B;
+  --accent:#FF7447; --accent-ink:#1A0E08; --up:#FF6B6B; --down:#6EA2FF; --ok:#4CC383;
+  --r-wheat:#E8B536; --r-wood:#4CB77D; --r-iron:#9AAABD; --r-cotton:#B08BEA;
+  --t1:#E8B536; --t2:#4CB77D; --t3:#8FA3B8; --t4:#B08BEA; --t5:#F08C4E; --t6:#4BB7D3;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:0 40px}
+
+/* top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--ink);color:var(--bg)}
+.bar-in{max-width:1280px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.brand{font-family:var(--f-display);font-size:24px;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+.brand small{font-family:var(--f-body);font-size:12px;opacity:.7;letter-spacing:1px}
+.round{font-family:var(--f-display);font-size:20px;background:var(--bg);color:var(--ink);padding:2px 12px;border-radius:999px}
+.timer{display:flex;align-items:center;gap:6px}
+.timer .t{font-family:var(--f-num);font-size:26px;min-width:4.2ch;text-align:center}
+.timer.zero .t{color:var(--accent);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.spacer{flex:1}
+.bbtn{background:transparent;border:1.5px solid color-mix(in srgb,var(--bg) 45%,transparent);color:var(--bg);border-radius:10px;padding:6px 12px;font-weight:500}
+.bbtn:hover{background:color-mix(in srgb,var(--bg) 14%,transparent)}
+.bbtn.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.bbtn:disabled{opacity:.4;cursor:default}
+
+/* news */
+.news{margin-top:16px;display:flex;gap:14px;align-items:flex-start;background:var(--paper);border:2px dashed var(--accent);border-radius:14px;padding:12px 16px}
+.news .tag{font-family:var(--f-display);background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:2px 10px;white-space:nowrap}
+.news b{font-family:var(--f-display);font-weight:400;font-size:20px}
+.news p{margin:2px 0 0;color:var(--muted)}
+.lastround{background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:8px 14px;margin-top:12px;font-weight:700;text-align:center}
+
+/* board */
+.sec-h{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
+.sec-h h2{font-size:24px}
+.sec-h span{color:var(--muted);font-size:14px}
+.board{display:grid;gap:10px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.board.prod{grid-template-columns:repeat(5,minmax(0,1fr))}
+.tile{background:var(--paper);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);border-top:6px solid var(--c,var(--line));min-width:0;display:flex;flex-direction:column;gap:4px}
+.tile .nm{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-size:22px}
+.tile .ic{font-size:26px;line-height:1}
+.pr{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.pr .lbl{font-size:13px;color:var(--muted)}
+.pr .v{font-family:var(--f-num);font-size:26px;font-weight:600}
+.pr .v.sm{font-size:18px}
+.chg{font-family:var(--f-num);font-size:13px;font-weight:600}
+.chg.up{color:var(--up)} .chg.down{color:var(--down)} .chg.flat{color:var(--muted)}
+.stock{font-size:13px;color:var(--muted);display:flex;justify-content:space-between}
+.stockbar{height:6px;border-radius:3px;background:var(--paper2);overflow:hidden}
+.stockbar i{display:block;height:100%;background:var(--c)}
+.spark{width:100%;height:30px;display:block}
+.recipe{display:flex;flex-wrap:wrap;gap:4px;font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:3px;background:var(--paper2);border-radius:999px;padding:1px 8px;font-size:13px;white-space:nowrap}
+.soldout{color:var(--up);font-weight:700}
+
+/* teams */
+.teams{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.team{all:unset;box-sizing:border-box;cursor:pointer;background:var(--paper);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;border:2px solid transparent;transition:transform .12s}
+.team:hover{transform:translateY(-2px);border-color:var(--c)}
+.team:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.team .hd{background:var(--c);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.team .hd h3{font-size:22px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.2)}
+.team .hd .sp{font-size:12px;background:rgba(255,255,255,.22);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.team .bd{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.money{display:flex;align-items:baseline;justify-content:space-between}
+.money .v{font-family:var(--f-num);font-size:30px;font-weight:600}
+.money .v small{font-size:15px;color:var(--muted);font-weight:500}
+.profit{font-family:var(--f-num);font-size:14px;font-weight:600}
+.inv{display:flex;flex-wrap:wrap;gap:5px}
+.inv .chip{font-size:14px}
+.inv .chip.zero{opacity:.38}
+.team .go{margin-top:2px;font-size:13px;color:var(--muted);text-align:right}
+
+/* log */
+.log{background:var(--paper);border-radius:14px;padding:6px 16px;box-shadow:var(--shadow);max-height:240px;overflow:auto}
+.log ol{list-style:none;margin:0;padding:0}
+.log li{padding:7px 0;border-bottom:1px solid var(--line);font-size:14px;display:flex;gap:10px}
+.log li:last-child{border-bottom:0}
+.log .r{font-family:var(--f-num);color:var(--muted);white-space:nowrap}
+
+/* modal */
+#modal{position:fixed;inset:0;z-index:20;background:rgba(10,20,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) 16px 16px;overflow:auto}
+.sheet{background:var(--bg);border-radius:20px;width:100%;max-width:820px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);overflow:hidden;margin:auto 0}
+.sheet .top{background:var(--c,var(--ink));color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sheet .top h2{font-size:28px;color:#fff;flex:1;min-width:0}
+.sheet .top .m{font-family:var(--f-num);font-size:24px;font-weight:600}
+.x{background:rgba(255,255,255,.2);border:0;border-radius:10px;width:40px;height:40px;font-size:22px;color:#fff}
+.sheet .inner{padding:16px 18px 20px;display:flex;flex-direction:column;gap:14px}
+.mine{display:flex;flex-wrap:wrap;gap:6px}
+.mine .chip{font-size:15px;padding:3px 10px;background:var(--paper)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tabs button{border:2px solid var(--line);background:var(--paper);border-radius:12px;padding:10px 4px;font-family:var(--f-display);font-size:19px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.1}
+.tabs button span{font-family:var(--f-body);font-size:12px;color:var(--muted)}
+.tabs button[aria-selected="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.tabs button[aria-selected="true"] span{color:var(--bg);opacity:.75}
+.help{background:var(--paper2);border-radius:10px;padding:8px 12px;font-size:14px;color:var(--muted)}
+.pick{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.pick button{border:2px solid var(--line);background:var(--paper);border-radius:12px;padding:10px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0}
+.pick button .n{font-family:var(--f-display);font-size:20px}
+.pick button .s{font-size:13px;color:var(--muted)}
+.pick button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+.pick button:disabled{opacity:.45;cursor:default}
+.qty{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.qty .lbl{font-weight:700}
+.step{display:inline-flex;align-items:center;background:var(--paper);border:2px solid var(--line);border-radius:12px;overflow:hidden}
+.step button{border:0;background:transparent;width:44px;height:44px;font-size:24px;font-weight:700}
+.step button:hover{background:var(--paper2)}
+.step .val{font-family:var(--f-num);font-size:22px;min-width:3ch;text-align:center;font-weight:600}
+.acts{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.act{border:0;border-radius:14px;padding:14px;font-family:var(--f-display);font-size:22px;background:var(--ink);color:var(--bg);display:flex;flex-direction:column;align-items:center;gap:2px}
+.act small{font-family:var(--f-body);font-size:13px;opacity:.8}
+.act.buy{background:var(--up);color:#fff}
+.act.sell{background:var(--down);color:#fff}
+.act.ok{background:var(--ok);color:#fff}
+.act:disabled{opacity:.35;cursor:default}
+.why{font-size:14px;color:var(--up);min-height:1.5em;text-align:center}
+.trade{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+.tcol{background:var(--paper);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;border-top:6px solid var(--c);min-width:0}
+.tcol h3{font-size:19px}
+.trow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.trow .have{font-size:12px;color:var(--muted)}
+.trow .step button{width:36px;height:36px;font-size:20px}
+.trow .step .val{font-size:18px}
+.coinin{width:6.5ch;font-family:var(--f-num);font-size:18px;padding:5px 8px;border:2px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);text-align:right}
+.swap{display:flex;align-items:center;justify-content:center;font-size:26px}
+
+/* setup & end */
+.hero{padding-block:28px 6px;display:grid;gap:18px;grid-template-columns:1.1fr .9fr;align-items:center}
+.hero h1{font-size:clamp(40px,7vw,72px);line-height:1}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{font-size:18px;color:var(--muted);margin:10px 0 0;max-width:36em}
+.map{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.map div{background:var(--paper);border-radius:14px;padding:10px 12px;border-left:8px solid var(--c);box-shadow:var(--shadow)}
+.map b{font-family:var(--f-display);font-weight:400;font-size:20px;display:block}
+.map span{font-size:13px;color:var(--muted)}
+.card{background:var(--paper);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.setgrid{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.flab{font-weight:700;font-size:14px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:2px solid var(--line);background:var(--paper);border-radius:10px;padding:6px 14px;font-family:var(--f-num);font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.trow2{display:grid;grid-template-columns:14px 1fr auto;gap:10px;align-items:center}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--c)}
+.trow2 input,.trow2 select{font:inherit;padding:8px 10px;border:2px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);min-width:0}
+.start{border:0;background:var(--accent);color:var(--accent-ink);font-family:var(--f-display);font-size:28px;padding:14px 30px;border-radius:16px;margin-top:16px}
+.rules{display:grid;gap:12px;grid-template-columns:repeat(4,1fr);counter-reset:s}
+.rule{background:var(--paper);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.rule .k{font-family:var(--f-display);font-size:15px;color:var(--accent)}
+.rule b{font-family:var(--f-display);font-weight:400;font-size:21px;display:block;margin:2px 0 4px}
+.rule p{margin:0;font-size:14px;color:var(--muted)}
+.recipes{display:grid;gap:8px;grid-template-columns:repeat(5,1fr)}
+.recipes div{background:var(--paper);border-radius:12px;padding:10px;text-align:center}
+.recipes .big{font-size:30px}
+.recipes b{font-family:var(--f-display);font-weight:400;font-size:18px;display:block}
+.tips{margin:0;padding-left:1.2em;color:var(--muted);font-size:15px;display:grid;gap:4px}
+.tips b{color:var(--ink)}
+
+.rank{display:flex;flex-direction:column;gap:10px}
+.rk{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;background:var(--paper);border-radius:14px;padding:10px 14px;box-shadow:var(--shadow)}
+.rk .p{font-family:var(--f-display);font-size:30px;text-align:center}
+.rk.first{outline:3px solid var(--r-wheat)}
+.rk .nm{font-family:var(--f-display);font-size:22px}
+.rk .bar2{height:10px;border-radius:5px;background:var(--paper2);margin-top:4px;overflow:hidden}
+.rk .bar2 i{display:block;height:100%;background:var(--c)}
+.rk .val{font-family:var(--f-num);font-size:22px;font-weight:600;text-align:right}
+.rk .val small{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.chartbox{background:var(--paper);border-radius:14px;padding:12px;box-shadow:var(--shadow)}
+canvas{width:100%;height:260px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:14px;margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--c);margin-right:4px;vertical-align:-1px}
+.qs{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
+.qs div{background:var(--paper);border-radius:14px;padding:14px;border-left:6px solid var(--accent)}
+.qs b{font-family:var(--f-display);font-weight:400;font-size:19px}
+.qs p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+.endgrid{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+
+.confirm{max-width:440px}
+.confirm .inner p{margin:0;font-size:17px}
+.row-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.btn{border:2px solid var(--line);background:var(--paper);border-radius:12px;padding:10px 18px;font-weight:700}
+.btn.main{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(30px);opacity:0;background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:14px;font-weight:700;z-index:30;transition:.25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:900px){
+  .board{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .board.prod{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero,.setgrid,.endgrid{grid-template-columns:1fr}
+  .rules{grid-template-columns:1fr 1fr}
+  .recipes{grid-template-columns:repeat(3,1fr)}
+  .qs{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .tabs{grid-template-columns:repeat(2,1fr)}
+  .trade{grid-template-columns:1fr}
+  .rules{grid-template-columns:1fr}
+  .recipes{grid-template-columns:repeat(2,1fr)}
+  .pr .v{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+
+/* ---- 동시 접속 화면 ---- */
+.conn{font-size:12px;padding:3px 10px;border-radius:999px;background:color-mix(in srgb,var(--bg) 16%,transparent);white-space:nowrap}
+.conn.local{background:var(--accent);color:var(--accent-ink)}
+.mepill{font-family:var(--f-display);font-size:20px;background:var(--c);color:#fff;padding:2px 14px;border-radius:999px}
+.roles{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.role{all:unset;box-sizing:border-box;cursor:pointer;background:var(--paper);border-radius:16px;box-shadow:var(--shadow);padding:16px;border-left:12px solid var(--c);display:flex;flex-direction:column;gap:4px}
+.role:hover{transform:translateY(-2px)}
+.role:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.role b{font-family:var(--f-display);font-weight:400;font-size:26px}
+.role span{color:var(--muted);font-size:14px}
+.role.teacher{--c:var(--ink)}
+.split{display:grid;gap:16px;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start;margin-top:16px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--paper);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.panel>.ph{padding:10px 16px;display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.panel>.ph h2{font-size:21px}
+.panel>.pb{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.panel.mine-card>.ph{background:var(--c);color:#fff;border:0}
+.panel.mine-card>.ph h2{color:#fff}
+.bigmoney{font-family:var(--f-num);font-size:40px;font-weight:600;line-height:1}
+.bigmoney small{font-size:16px;color:var(--muted)}
+.panel .inner{display:flex;flex-direction:column;gap:14px}
+.mtable{width:100%;border-collapse:collapse;font-size:15px}
+.mtable th{font-size:12px;color:var(--muted);font-weight:500;text-align:right;padding:4px 6px}
+.mtable th:first-child{text-align:left}
+.mtable td{padding:7px 6px;border-top:1px solid var(--line);text-align:right;font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.mtable td:first-child{text-align:left;font-family:var(--f-body);font-weight:700;white-space:nowrap}
+.tw{overflow-x:auto}
+.offer{border:2px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;border-left:8px solid var(--c)}
+.offer .who{font-weight:700}
+.offer .xch{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;font-size:14px}
+.offer .xch div{background:var(--paper2);border-radius:8px;padding:6px 8px;min-width:0}
+.offer .xch small{display:block;color:var(--muted);font-size:12px}
+.offer .btns{display:flex;gap:8px;flex-wrap:wrap}
+.sbtn{border:0;border-radius:10px;padding:8px 16px;font-weight:700;background:var(--paper2)}
+.sbtn.yes{background:var(--ok);color:#fff}
+.sbtn.no{background:var(--paper2)}
+.sbtn:disabled{opacity:.4;cursor:default}
+.empty{color:var(--muted);font-size:14px}
+.others{display:flex;flex-direction:column;gap:8px}
+.other{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:center;border-left:6px solid var(--c);padding:4px 0 4px 10px}
+.other b{font-family:var(--f-display);font-weight:400;font-size:18px}
+.other .inv .chip{font-size:12px}
+.vbtn{border:1px solid var(--line);background:transparent;border-radius:8px;font-size:12px;padding:1px 8px;color:var(--muted);margin-left:auto}
+.vbtn:hover{color:var(--up);border-color:var(--up)}
+.waitbox{text-align:center;padding:30px 16px;color:var(--muted)}
+.waitbox b{display:block;font-family:var(--f-display);font-weight:400;font-size:28px;color:var(--ink);margin-bottom:6px}
+.note{font-size:13px;color:var(--muted)}
+@media (max-width:960px){.split{grid-template-columns:1fr}}
+.entry{display:grid;gap:16px;grid-template-columns:1fr 1fr;margin-top:12px}
+.entry-card{display:flex;flex-direction:column;gap:10px}
+.entry-card h2{font-size:26px}
+.entry-card .note{margin:0}
+.joinrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.joinrow .start{margin:0;font-size:24px;padding:10px 22px}
+.codein{font-family:var(--f-num);font-size:34px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;width:7.2em;max-width:100%;padding:8px 12px;border:3px solid var(--line);border-radius:14px;background:var(--paper);color:var(--ink)}
+.joinbox{display:grid !important;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+.qr{background:#fff;border-radius:12px;padding:8px;width:220px;max-width:100%}
+.qr svg{display:block;width:100%;height:auto}
+.joininfo{display:flex;flex-direction:column;gap:8px;min-width:0}
+.joininfo p{margin:0}
+.roomcode{font-family:var(--f-num);font-size:64px;font-weight:600;letter-spacing:.18em;line-height:1;color:var(--accent)}
+.urlbox{font-family:var(--f-num);font-size:14px;background:var(--paper2);border-radius:10px;padding:8px 10px;word-break:break-all;user-select:all}
+@media (max-width:760px){.entry{grid-template-columns:1fr}.joinbox{grid-template-columns:1fr;justify-items:center}.roomcode{font-size:48px}}
+
+</style>
+<script src="mqtt.min.js"></script>
+<script src="qrcode.js"></script>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+
+// ================= 게임 데이터 =================
+const RES = {
+  wheat: {name:'밀',   icon:'🌾', base:10, c:'--r-wheat'},
+  wood:  {name:'나무', icon:'🪵', base:10, c:'--r-wood'},
+  iron:  {name:'철',   icon:'🔩', base:10, c:'--r-iron'},
+  cotton:{name:'목화', icon:'🧶', base:10, c:'--r-cotton'},
+};
+const RK = Object.keys(RES);
+const PROD = {
+  bread:  {name:'빵',     icon:'🍞', base:55,  need:{wheat:2, wood:1},  note:'밀가루를 장작불에 구워요'},
+  chair:  {name:'의자',   icon:'🪑', base:55,  need:{wood:2, cotton:1}, note:'나무 의자에 목화 방석'},
+  clothes:{name:'옷',     icon:'👕', base:55,  need:{cotton:2, iron:1}, note:'목화 천에 철 단추'},
+  can:    {name:'통조림', icon:'🥫', base:55,  need:{iron:2, wheat:1},  note:'철 깡통에 곡식 음식'},
+  camp:   {name:'캠핑 세트',icon:'🎒', base:100, need:{wheat:1, wood:1, iron:1, cotton:1}, note:'네 자원이 모두 필요한 고급품'},
+};
+const PK = Object.keys(PROD);
+const PRESETS = [
+  {name:'황금들판국', spec:'wheat'}, {name:'푸른숲국', spec:'wood'},
+  {name:'바위산국', spec:'iron'},   {name:'하얀솜국', spec:'cotton'},
+  {name:'넓은벌판국', spec:'wheat'}, {name:'깊은광산국', spec:'iron'},
+];
+const START_MONEY = 100, START_SPEC = 5, START_OTHER = 1, PER_ROUND = 5, MARKET_STOCK = 10, SELL_RATE = 0.7;
+const NEWS = [
+  {title:'가뭄이 들었어요', text:'비가 오지 않아 밀이 귀해졌어요. 시장 창고의 밀이 줄고, 밀 생산도 줄어요.', stock:{wheat:-6}, prod:{wheat:-2}},
+  {title:'올해는 풍년!', text:'밀 농사가 잘됐어요. 시장 창고에 밀이 많이 들어오고, 밀 생산도 늘어요.', stock:{wheat:8}, prod:{wheat:2}},
+  {title:'큰 산불이 났어요', text:'숲이 타서 나무가 귀해졌어요. 시장 창고의 나무가 줄고, 나무 생산도 줄어요.', stock:{wood:-6}, prod:{wood:-2}},
+  {title:'새 철광산 발견', text:'땅속에서 철이 많이 나왔어요. 시장 창고에 철이 많아지고, 철 생산도 늘어요.', stock:{iron:8}, prod:{iron:2}},
+  {title:'목화밭에 벌레가', text:'벌레 때문에 목화가 귀해졌어요. 시장 창고의 목화가 줄고, 목화 생산도 줄어요.', stock:{cotton:-6}, prod:{cotton:-2}},
+  {title:'새 학기 준비', text:'새 옷을 사려는 사람이 많아졌어요. 옷 값이 올라요.', demand:{clothes:-3}},
+  {title:'캠핑 열풍', text:'주말마다 캠핑을 떠나요. 캠핑 세트 값이 올라요.', demand:{camp:-3}},
+  {title:'이사철이에요', text:'새 집에 놓을 의자가 많이 필요해요. 의자 값이 올라요.', demand:{chair:-3}},
+  {title:'겨울 준비', text:'오래 두고 먹을 음식을 찾아요. 통조림 값이 올라요.', demand:{can:-3}},
+  {title:'빵 축제가 열려요', text:'온 동네가 빵을 찾아요. 빵 값이 올라요.', demand:{bread:-3}},
+];
+
+// ================= 가격 (수요와 공급) =================
+const resPrice = (k, s) => Math.max(2, Math.round(RES[k].base * 20 / (s + 10)));
+const resSellPrice = (k, s) => Math.max(1, Math.floor(resPrice(k, s + 1) * SELL_RATE));
+const prodPrice = (p, n) => Math.max(5, Math.round(PROD[p].base * 8 / (n + 8)));
+function buyQuote(m, k, q){ let s=m.res[k], c=0; for(let i=0;i<q;i++){ if(s<=0) return null; c+=resPrice(k,s); s--; } return c; }
+function sellResQuote(m, k, q){ let s=m.res[k], v=0; for(let i=0;i<q;i++){ s++; v+=Math.max(1,Math.floor(resPrice(k,s)*SELL_RATE)); } return v; }
+function sellProdQuote(m, p, q){ let n=m.prod[p], v=0; for(let i=0;i<q;i++){ v+=prodPrice(p,n); n++; } return v; }
+const curRes = (m,k) => resPrice(k, Math.max(m.res[k],0));
+const curProd = (m,p) => prodPrice(p, m.prod[p]);
+function snapPrices(m){ const o={}; RK.forEach(k=>o[k]=curRes(m,k)); PK.forEach(p=>o[p]=curProd(m,p)); return o; }
+const clone = o => JSON.parse(JSON.stringify(o));
+const canMake = (t,p) => Math.min(...Object.entries(PROD[p].need).map(([k,n])=>Math.floor(t.inv[k]/n)));
+
+// ================= 엔진: 행동 기록을 순서대로 다시 계산 =================
+function makeBase(list){
+  const teams = list.map((p,i)=>{
+    const inv={}; RK.forEach(k=>inv[k]=(k===p.spec?START_SPEC:START_OTHER));
+    const prod={}; PK.forEach(k=>prod[k]=0);
+    return {id:i, name:(p.name||`${i+1}모둠`).trim().slice(0,12)||`${i+1}모둠`, spec:p.spec, color:`--t${i+1}`, money:START_MONEY, inv, prod, made:0, trades:0};
+  });
+  const market={res:{},prod:{}}; RK.forEach(k=>market.res[k]=MARKET_STOCK); PK.forEach(p=>market.prod[p]=0);
+  const roundHist={}; RK.forEach(k=>roundHist[k]=[curRes(market,k)]); PK.forEach(p=>roundHist[p]=[curProd(market,p)]);
+  return {round:0, teams, market, roundHist, usedNews:[], log:[], offers:{}};
+}
+function cleanBundle(o){ const r={coin:Math.max(0,Math.min(9999,Math.floor(+(o&&o.coin)||0)))}; RK.forEach(k=>r[k]=Math.max(0,Math.min(99,Math.floor(+(o&&o[k])||0)))); return r; }
+function lacks(t, b){ if(b.coin>t.money) return `${t.name}의 코인이 부족해요`; for(const k of RK) if(b[k]>t.inv[k]) return `${t.name}의 ${RES[k].name}이(가) 부족해요`; return ''; }
+function describe(b){ const p=[]; RK.forEach(k=>{ if(b[k]) p.push(`${RES[k].icon}${RES[k].name} ${b[k]}`); }); if(b.coin) p.push(`🪙${b.coin}코인`); return p.join(', ')||'없음'; }
+const isEmptyBundle = b => !b.coin && RK.every(k=>!b[k]);
+
+function applyAct(st, a){
+  const m=st.market, t=st.teams[a.team];
+  if(!t) return '나라를 찾을 수 없어요';
+  const q=Math.max(1,Math.min(30,Math.floor(+a.q)||1));
+  switch(a.type){
+    case 'buy': { if(!RES[a.k]) return '잘못된 자원'; const c=buyQuote(m,a.k,q);
+      if(c===null) return `시장 창고에 ${RES[a.k].name}이(가) ${m.res[a.k]}개뿐이에요`; if(c>t.money) return `코인이 ${c-t.money}개 모자라요`;
+      t.money-=c; t.inv[a.k]+=q; m.res[a.k]-=q;
+      return {tick:1, log:`${t.name}이(가) 시장에서 ${RES[a.k].name} ${q}개를 ${c}코인에 샀어요.`, msg:`${RES[a.k].icon} ${RES[a.k].name} ${q}개 구입 (−${c}코인)`}; }
+    case 'sellres': { if(!RES[a.k]) return '잘못된 자원'; if(t.inv[a.k]<q) return `${RES[a.k].name}이(가) ${t.inv[a.k]}개뿐이에요`;
+      const v=sellResQuote(m,a.k,q); t.money+=v; t.inv[a.k]-=q; m.res[a.k]+=q;
+      return {tick:1, log:`${t.name}이(가) 시장에 ${RES[a.k].name} ${q}개를 ${v}코인에 팔았어요.`, msg:`${RES[a.k].icon} ${RES[a.k].name} ${q}개 판매 (+${v}코인)`}; }
+    case 'make': { if(!PROD[a.p]) return '잘못된 상품'; if(canMake(t,a.p)<q) return '재료가 모자라요';
+      Object.entries(PROD[a.p].need).forEach(([k,n])=>t.inv[k]-=n*q); t.prod[a.p]+=q; t.made+=q;
+      return {log:`${t.name}이(가) ${PROD[a.p].name} ${q}개를 만들었어요.`, msg:`${PROD[a.p].icon} ${PROD[a.p].name} ${q}개 완성!`}; }
+    case 'sellprod': { if(!PROD[a.p]) return '잘못된 상품'; if(t.prod[a.p]<q) return `${PROD[a.p].name}이(가) ${t.prod[a.p]}개뿐이에요`;
+      const v=sellProdQuote(m,a.p,q); t.money+=v; t.prod[a.p]-=q; m.prod[a.p]+=q;
+      return {tick:1, log:`${t.name}이(가) ${PROD[a.p].name} ${q}개를 ${v}코인에 팔았어요.`, msg:`${PROD[a.p].icon} ${PROD[a.p].name} ${q}개 판매 (+${v}코인)`}; }
+    case 'offer': { const to=st.teams[a.to]; if(!to||a.to===a.team) return '무역할 나라를 다시 고르세요';
+      const give=cleanBundle(a.give), get=cleanBundle(a.get);
+      if(isEmptyBundle(give)&&isEmptyBundle(get)) return '주고받을 것을 정하세요';
+      const l=lacks(t,give); if(l) return l;
+      st.offers[a.id]={id:a.id, from:a.team, to:a.to, give, get, status:'open'};
+      return {log:`📨 ${t.name} → ${to.name} 무역 제안: [${describe(give)}] ↔ [${describe(get)}]`, msg:`📨 ${to.name}에 제안을 보냈어요`}; }
+    case 'accept': { const o=st.offers[a.offer]; if(!o||o.status!=='open') return '이미 끝난 제안이에요'; if(o.to!==a.team) return '받은 나라만 수락할 수 있어요';
+      const f=st.teams[o.from]; const l=lacks(f,o.give)||lacks(t,o.get); if(l) return l;
+      RK.forEach(k=>{ f.inv[k]+=o.get[k]-o.give[k]; t.inv[k]+=o.give[k]-o.get[k]; });
+      f.money+=o.get.coin-o.give.coin; t.money+=o.give.coin-o.get.coin; f.trades++; t.trades++; o.status='done';
+      return {log:`🤝 무역 성공! ${f.name} [${describe(o.give)}] ↔ ${t.name} [${describe(o.get)}]`, msg:`🤝 ${f.name}와(과) 무역 성공!`}; }
+    case 'decline': { const o=st.offers[a.offer]; if(!o||o.status!=='open') return '이미 끝난 제안이에요'; if(o.to!==a.team) return '받은 나라만 거절할 수 있어요';
+      o.status='declined'; return {log:`${t.name}이(가) ${st.teams[o.from].name}의 제안을 거절했어요.`, msg:'제안을 거절했어요'}; }
+    case 'cancel': { const o=st.offers[a.offer]; if(!o||o.status!=='open') return '이미 끝난 제안이에요'; if(o.from!==a.team) return '보낸 나라만 취소할 수 있어요';
+      o.status='cancelled'; return {msg:'제안을 취소했어요'}; }
+  }
+  return '알 수 없는 행동';
+}
+function replay(base, acts){
+  const st=clone(base);
+  const voids=new Set(acts.filter(a=>a.type==='void').map(a=>a.target));
+  const list=acts.filter(a=>a.type!=='void').sort((a,b)=>(a.t-b.t)||(a.id<b.id?-1:a.id>b.id?1:0));
+  const results={}, ticks={};
+  RK.forEach(k=>ticks[k]=[curRes(st.market,k)]); PK.forEach(p=>ticks[p]=[curProd(st.market,p)]);
+  const newLog=[];
+  for(const a of list){
+    if(voids.has(a.id)){ results[a.id]={ok:false, msg:'선생님이 취소했어요', voided:true}; continue; }
+    let r; try{ r=applyAct(st,a); }catch(e){ r='잘못된 요청이에요'; }
+    if(typeof r==='string'){ results[a.id]={ok:false, msg:r}; continue; }
+    results[a.id]={ok:true, msg:r.msg};
+    if(r.log) newLog.push({id:a.id, r:st.round, t:r.log, team:a.team});
+    if(r.tick){ RK.forEach(k=>ticks[k].push(curRes(st.market,k))); PK.forEach(p=>ticks[p].push(curProd(st.market,p))); }
+  }
+  st.log=newLog.reverse().concat(st.log).slice(0,150);
+  return {st, results, ticks};
+}
+function newsForRound(st, settings){
+  if(!settings.events || st.round<=1) return null;
+  let pool=NEWS.map((n,i)=>i).filter(i=>!st.usedNews.includes(i));
+  if(!pool.length){ st.usedNews=[]; pool=NEWS.map((n,i)=>i); }
+  const idx=pool[Math.floor(Math.random()*pool.length)]; st.usedNews.push(idx); return NEWS[idx];
+}
+// 선생님 기기에서만 실행: 다음 라운드 상태 만들기
+function buildRound(game){
+  const st=clone(game.base);
+  if(st.round>0){ RK.forEach(k=>{ const s=st.market.res[k]; st.market.res[k]=s+Math.round((MARKET_STOCK-s)*0.5); }); PK.forEach(p=>st.market.prod[p]=Math.trunc(st.market.prod[p]/2)); }
+  st.round++;
+  const roundStart=snapPrices(st.market);
+  const news=newsForRound(st, game.settings);
+  if(news){ Object.entries(news.stock||{}).forEach(([k,v])=>st.market.res[k]=Math.max(0,st.market.res[k]+v)); Object.entries(news.demand||{}).forEach(([p,v])=>st.market.prod[p]=Math.max(-3,st.market.prod[p]+v)); }
+  st.teams.forEach(t=>{ t.inv[t.spec]+=Math.max(1, PER_ROUND+((news&&news.prod&&news.prod[t.spec])||0)); });
+  st.offers={};
+  st.log.unshift({id:'r'+st.round, r:st.round, t:`${st.round}라운드 시작! 모든 나라에 특산물이 도착했어요.`+(news?` 뉴스: ${news.title}`:'')});
+  return {...game, round:st.round, phase:'play', base:st, news:news?{title:news.title,text:news.text}:null, roundStart, endSnapshot:null, timer:{endsAt:null, left:game.settings.minutes*60}};
+}
+
+// ================= 연결: 공개 중계 서버(MQTT)로 기기끼리 메시지 주고받기 =================
+// 선생님 화면이 게임의 기준(호스트)이에요. 모둠 기기는 행동을 보내고, 선생님 화면이 순서를 정해 모두에게 알려요.
+const BROKERS = (()=>{
+  try{ const b=new URLSearchParams(location.search).get('broker'); if(b) return [b]; }catch(e){}
+  return ['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt','wss://test.mosquitto.org:8081/mqtt'];
+})();
+const TOPIC = room => `daeheul-tradeport/v1/${room}`;
+const Net = {
+  clients:[], room:null, host:false, seen:new Set(),
+  connect(room, host){
+    this.close(); this.room=room; this.host=host;
+    if(!window.mqtt){ setConn(); return; }
+    BROKERS.forEach(url=>{
+      let c; try{ c=mqtt.connect(url,{clientId:'tp_'+Math.random().toString(36).slice(2,10), keepalive:30, reconnectPeriod:3000, connectTimeout:8000, clean:true}); }catch(e){ return; }
+      c.on('connect',()=>{
+        c.subscribe(TOPIC(room)+(host?'/act':'/state'),{qos:1});
+        if(host && G) c.publish(TOPIC(room)+'/state', JSON.stringify(packState()), {qos:1, retain:true});
+        setConn();
+      });
+      c.on('close',setConn); c.on('offline',setConn); c.on('error',()=>{});
+      c.on('message',(topic,buf)=>{ let msg; try{ msg=JSON.parse(buf.toString()); }catch(e){ return; } if(host) onRemoteAct(msg); else onRemoteState(msg); });
+      this.clients.push(c);
+    });
+  },
+  close(){ this.clients.forEach(c=>{ try{ c.end(true); }catch(e){} }); this.clients=[]; setConn(); },
+  connected(){ return this.clients.filter(c=>c.connected).length; },
+  pub(sub, obj, retain){ const s=JSON.stringify(obj); this.clients.forEach(c=>{ if(c.connected) c.publish(TOPIC(this.room)+sub, s, {qos:1, retain:!!retain}); }); },
+};
+let connShown='';
+function setConn(){ const el=document.getElementById('conn'); if(el) el.outerHTML=connBadge(); }
+function connBadge(){
+  if(MODE===null) return '';
+  const n=Net.connected();
+  if(n>0) return `<span class="conn" id="conn">● 연결됨 · 방 ${esc(ROOM||'')}</span>`;
+  return `<span class="conn local" id="conn">${MODE==='host'?'연결 중… (이 화면에서는 계속 진행돼요)':'연결 중…'}</span>`;
+}
+
+// ================= 화면 상태 =================
+let MODE=null, ROOM=null, G=null, ACTS=[], VIEW=null, ROLE=null, SEQ=0, lastT=0;
+const pending={};
+let ui={sheetTeam:null, tab:'market', res:'wheat', make:'bread', sell:'bread', qty:1, partner:null, give:{}, get:{}, makingNew:false, joinErr:''};
+let setup={teams:4, rounds:5, minutes:5, events:true, list:PRESETS.map(p=>({...p}))};
+const HOST_KEY='tradeport-host-v1', TEAM_KEY='tradeport-team-v1';
+const lsGet=k=>{ try{ const s=localStorage.getItem(k); return s?JSON.parse(s):null; }catch(e){ return null; } };
+const lsSet=(k,v)=>{ try{ if(v===null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+
+function recompute(){
+  if(!G){ VIEW=null; return; }
+  VIEW = G.phase==='play' ? replay(G.base, ACTS) : {st:G.base, results:{}, ticks:null};
+  Object.keys(pending).forEach(id=>{ const r=VIEW.results[id]; if(r){ toast(r.ok?r.msg:'⚠️ 안 됐어요: '+r.msg); clearTimeout(pending[id]); delete pending[id]; } });
+}
+const packState = () => ({seq:SEQ, G, ACTS});
+
+// ----- 선생님(호스트) -----
+const hostTime = () => { const t=Math.max(Date.now(), lastT+1); lastT=t; return t; };
+let pubTimer=null;
+function hostCommit(){
+  SEQ++; lsSet(HOST_KEY, {room:ROOM, seq:SEQ, G, ACTS});
+  recompute(); render();
+  clearTimeout(pubTimer); pubTimer=setTimeout(()=>Net.pub('/state', packState(), true), 120);
+}
+function onRemoteAct(a){
+  if(!G || G.phase!=='play' || !a || typeof a!=='object' || !a.id || a.round!==G.round) return;
+  if(ACTS.some(x=>x.id===a.id)) return;
+  if(!['buy','sellres','make','sellprod','offer','accept','decline','cancel'].includes(a.type)) return;
+  a.t=hostTime(); ACTS.push(a); hostCommit();
+}
+function hostAdd(a){ a.round=G.round; a.t=hostTime(); ACTS.push(a); hostCommit(); }
+function makeRoom(){ const al='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<5;i++) s+=al[Math.floor(Math.random()*al.length)]; return s; }
+function createGame(){
+  readNames();
+  const base=makeBase(setup.list.slice(0,setup.teams));
+  const g0={gid:'g'+Date.now().toString(36), settings:{rounds:setup.rounds, minutes:setup.minutes, events:setup.events}, round:0, phase:'lobby', base, news:null, roundStart:null, endSnapshot:null, timer:{endsAt:null,left:setup.minutes*60}};
+  const keepRoom = MODE==='host' && ROOM;
+  MODE='host'; ROLE='teacher'; ROOM = keepRoom ? ROOM : makeRoom();
+  G=buildRound(g0); ACTS=[]; ui.makingNew=false;
+  if(!keepRoom) Net.connect(ROOM, true);
+  hostCommit();
+  showJoin();
+}
+function resumeHost(){
+  const s=lsGet(HOST_KEY); if(!s) return;
+  MODE='host'; ROLE='teacher'; ROOM=s.room; SEQ=s.seq||0; G=s.G; ACTS=s.ACTS||[];
+  lastT=Math.max(0,...ACTS.map(a=>a.t||0));
+  Net.connect(ROOM, true); hostCommit();
+}
+function endRound(){
+  const fin=replay(G.base, ACTS).st;
+  RK.forEach(k=>fin.roundHist[k].push(curRes(fin.market,k))); PK.forEach(p=>fin.roundHist[p].push(curProd(fin.market,p)));
+  fin.offers={};
+  fin.log.unshift({id:'e'+fin.round, r:fin.round, t:`${fin.round}라운드가 끝났어요.`});
+  const last=fin.round>=G.settings.rounds;
+  G={...G, phase:last?'end':'roundEnd', base:fin, endSnapshot:snapPrices(fin.market), timer:{endsAt:null,left:0}}; ACTS=[];
+  hostCommit();
+}
+function nextRound(){ G=buildRound(G); ACTS=[]; hostCommit(); }
+function timeLeft(){ if(!G) return 0; const tm=G.timer||{}; return tm.endsAt? Math.max(0,Math.ceil((tm.endsAt-Date.now())/1000)) : (tm.left||0); }
+function toggleTimer(){
+  const tm=G.timer||{}; let nt;
+  if(tm.endsAt) nt={endsAt:null, left:timeLeft()};
+  else { const left=(tm.left>0?tm.left:G.settings.minutes*60); nt={endsAt:Date.now()+left*1000, left}; }
+  G={...G, timer:nt}; hostCommit();
+}
+
+// ----- 모둠 -----
+let joinTimer=null;
+function joinRoom(code){
+  code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5);
+  if(code.length!==5){ ui.joinErr='방 코드 5글자를 확인해 주세요.'; render(); return; }
+  MODE='team'; ROOM=code; G=null; ACTS=[]; SEQ=-1; ui.joinErr='';
+  const saved=lsGet(TEAM_KEY); ROLE = saved && saved.room===code ? saved.role : null;
+  Net.connect(code, false); render();
+  clearTimeout(joinTimer);
+  joinTimer=setTimeout(()=>{ if(MODE==='team' && !G){ ui.joinErr='아직 방을 찾지 못했어요. 코드가 맞는지, 선생님 화면이 켜져 있는지 확인해 주세요.'; render(); } }, 9000);
+}
+function onRemoteState(msg){
+  if(!msg || !msg.G) return;
+  const newGame = G && msg.G.gid!==G.gid;
+  if(!newGame && typeof msg.seq==='number' && msg.seq<=SEQ) return;
+  if(newGame){ ROLE=null; lsSet(TEAM_KEY,{room:ROOM, role:null}); }
+  SEQ=msg.seq; G=msg.G; ACTS=msg.ACTS||[]; ui.joinErr='';
+  if(ROLE!==null && !(G.base.teams[ROLE])) ROLE=null;
+  recompute(); render();
+}
+function leave(){ Net.close(); MODE=null; ROOM=null; G=null; ACTS=[]; ROLE=null; SEQ=0; lsSet(TEAM_KEY,null); history.replaceState(null,'',location.pathname); render(); }
+
+// ================= 행동 보내기 =================
+const newId = () => Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+function send(a){
+  if(!G || G.phase!=='play'){ toast('지금은 거래 시간이 아니에요'); return; }
+  a.id=newId(); a.round=G.round;
+  if(MODE==='host'){ pending[a.id]=0; hostAdd(a); return; }
+  if(!Net.connected()){ toast('연결이 끊겨 있어요. 잠시 뒤 다시 눌러 주세요.'); return; }
+  a.t=Date.now(); Net.pub('/act', a, false);
+  pending[a.id]=setTimeout(()=>{ if(pending[a.id]!==undefined){ delete pending[a.id]; toast('선생님 화면에 닿지 않았어요. 다시 눌러 주세요.'); } }, 8000);
+}
+
+// ================= 그리기 도우미 =================
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cv = v => `var(${v})`;
+let toastTimer;
+function toast(m){ const el=$('#toast'); el.textContent=m; el.classList.add('on'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('on'),2200); }
+function fmtTime(s){ const m=Math.floor(s/60), r=s%60; return `${m}:${String(r).padStart(2,'0')}`; }
+function chg(now, before){ if(before===undefined||before===null) return ''; const d=now-before; if(d>0) return `<span class="chg up">▲${d}</span>`; if(d<0) return `<span class="chg down">▼${-d}</span>`; return `<span class="chg flat">─0</span>`; }
+function spark(arr, color){
+  if(!arr || arr.length<2) return `<svg class="spark" viewBox="0 0 100 30" aria-hidden="true"></svg>`;
+  arr=arr.slice(-40); const mn=Math.min(...arr), mx=Math.max(...arr), span=Math.max(1,mx-mn);
+  const pts=arr.map((v,i)=>`${(i/(arr.length-1)*98+1).toFixed(1)},${(26-(v-mn)/span*22).toFixed(1)}`).join(' ');
+  const last=pts.split(' ').pop().split(',');
+  return `<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="${last[0]}" cy="${last[1]}" r="2.5" fill="${color}"/></svg>`;
+}
+const needChips = p => Object.entries(PROD[p].need).map(([k,n])=>`<span class="chip">${RES[k].icon} ${RES[k].name} ${n}</span>`).join('');
+function sparkSeries(k){ const h=(VIEW.st.roundHist[k]||[]).slice(); const t=VIEW.ticks&&VIEW.ticks[k]; return t? h.concat(t.slice(1)) : h; }
+function invChips(t, small){ return RK.map(k=>`<span class="chip ${t.inv[k]?'':'zero'}">${RES[k].icon} <span class="num">${t.inv[k]}</span></span>`).join('') + PK.filter(p=>t.prod[p]).map(p=>`<span class="chip">${PROD[p].icon}${small?'':' '+PROD[p].name} <span class="num">${t.prod[p]}</span></span>`).join(''); }
+const profitHTML = t => { const pf=t.money-START_MONEY; return `<span class="profit" style="color:${pf>0?'var(--up)':pf<0?'var(--down)':'var(--muted)'}">수익 ${pf>0?'+':''}${pf}</span>`; };
+
+// ================= 화면 =================
+function render(){
+  const fx=document.activeElement, fid=fx&&fx.id, sel=fx&&fx.selectionStart;
+  const app=$('#app');
+  const dropTransient=()=>{ const k=$('#modal').dataset.kind; if(k==='sheet'||k==='roundEnd') closeModal(true); };
+  if(MODE===null){ app.innerHTML=landingHTML(); dropTransient(); }
+  else if(MODE==='host' && (!G || ui.makingNew)){ app.innerHTML=setupHTML(); dropTransient(); }
+  else if(MODE==='team' && !G){ app.innerHTML=waitHTML(); dropTransient(); }
+  else if(ROLE===null){ app.innerHTML=pickHTML(); dropTransient(); }
+  else if(G.phase==='end'){ app.innerHTML=endHTML(); dropTransient(); drawChart(); }
+  else if(ROLE==='teacher'){ app.innerHTML=teacherHTML(); const k=$('#modal').dataset.kind; if(G.phase==='roundEnd'){ if(k!=='confirm'&&k!=='join') showRoundEnd(); } else renderSheet(); }
+  else { app.innerHTML=G.phase==='roundEnd'? teamRoundEndHTML() : teamHTML(ROLE); dropTransient(); }
+  if(fid){ const el=document.getElementById(fid); if(el){ el.focus(); try{ if(sel!=null) el.setSelectionRange(sel,sel); }catch(e){} } }
+  updTimer();
+}
+const joinURL = () => location.origin + location.pathname + '?room=' + ROOM;
+function landingHTML(){
+  const saved=lsGet(HOST_KEY);
+  const pre=(new URLSearchParams(location.search).get('room')||'').toUpperCase();
+  return `
+  <div class="bar"><div class="bar-in"><div class="brand">⚓ 세계 무역 항구 <small>6학년 무역 게임</small></div></div></div>
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <h1>자원을 사고팔아<br><em>무역왕</em>이 되어라!</h1>
+        <p>나라마다 가진 자원이 달라요. 서로 무역해서 필요한 자원을 모으고, 상품을 만들어 팔아 가장 많은 수익을 낸 나라가 이겨요. 로그인 없이 방 코드만 있으면 함께할 수 있어요.</p>
+      </div>
+      <div class="map">${PRESETS.slice(0,4).map((p,i)=>`<div style="--c:${cv('--t'+(i+1))}"><b>${esc(p.name)}</b><span>${RES[p.spec].icon} ${RES[p.spec].name}이(가) 많이 나요</span></div>`).join('')}</div>
+    </section>
+    <div class="entry">
+      <section class="card entry-card">
+        <h2>모둠으로 참여하기</h2>
+        <p class="note">선생님 화면에 나온 방 코드 5글자를 입력하세요.</p>
+        <div class="joinrow"><input id="code" class="codein" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="ABCDE" value="${esc(pre)}" aria-label="방 코드"><button class="start" id="join">참여하기</button></div>
+        <div class="why" style="text-align:left">${esc(ui.joinErr||'')}</div>
+      </section>
+      <section class="card entry-card">
+        <h2>선생님</h2>
+        <p class="note">이 기기가 전자칠판용 진행 화면이 돼요. 게임 내내 이 화면을 켜 두세요.</p>
+        <div class="row-btns" style="justify-content:flex-start">
+          <button class="btn main" id="host">새 게임 만들기</button>
+          ${saved&&saved.G?`<button class="btn" id="resume">이어 하기 (방 ${esc(saved.room)} · ${saved.G.round}라운드)</button>`:''}
+        </div>
+      </section>
+    </div>
+    <div class="sec-h"><h2>게임 방법</h2></div>
+    ${rulesHTML()}
+  </div>`;
+}
+function waitHTML(){
+  return `<div class="bar"><div class="bar-in"><div class="brand">⚓ 세계 무역 항구</div><span class="spacer"></span>${connBadge()}<button class="bbtn" id="leave">나가기</button></div></div>
+  <div class="wrap"><div class="waitbox"><b>방 ${esc(ROOM)}에 들어가는 중…</b>선생님 화면이 켜져 있으면 곧 나라 고르기가 나와요.</div>
+  ${ui.joinErr?`<div class="help" style="text-align:center">${esc(ui.joinErr)}</div>`:''}</div>`;
+}
+function showJoin(){
+  const m=$('#modal'); m.dataset.kind='join';
+  let qr=''; try{ const q=qrcode(0,'M'); q.addData(joinURL()); q.make(); qr=q.createSvgTag({cellSize:6, margin:2, scalable:true}); }catch(e){}
+  m.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="참여 방법" style="max-width:720px"><div class="top" style="background:var(--ink)"><h2>모둠 기기로 참여하기</h2><button class="x" data-close="1" aria-label="닫기">✕</button></div>
+    <div class="inner joinbox">
+      <div class="qr">${qr}</div>
+      <div class="joininfo">
+        <div class="note">방 코드</div>
+        <div class="roomcode">${esc(ROOM)}</div>
+        <p>모둠 기기에서 QR 코드를 찍거나, 아래 주소에 들어가 방 코드를 입력하세요. 로그인은 필요 없어요.</p>
+        <div class="urlbox" id="urlbox">${esc(joinURL())}</div>
+        <div class="row-btns" style="justify-content:flex-start"><button class="btn" id="copyurl">주소 복사</button><button class="btn main" data-close="1">시작하기</button></div>
+      </div>
+    </div></div>`;
+  m.hidden=false;
+}
+
+function rulesHTML(){
+  return `
+  <div class="rules">
+    <div class="rule"><div class="k">1단계</div><b>우리 자원 확인</b><p>나라마다 많이 나는 특산물이 달라요. 라운드가 시작되면 특산물 ${PER_ROUND}개가 들어와요.</p></div>
+    <div class="rule"><div class="k">2단계</div><b>필요한 자원 구하기</b><p>다른 나라에 무역을 제안하거나, 세계 시장에서 사요. 남는 자원은 팔 수 있어요.</p></div>
+    <div class="rule"><div class="k">3단계</div><b>상품 만들기</b><p>자원을 모아 빵·의자·옷·통조림·캠핑 세트를 만들어요.</p></div>
+    <div class="rule"><div class="k">4단계</div><b>비쌀 때 팔기</b><p>상품을 팔아 코인을 벌어요. 마지막 라운드가 끝났을 때 <b>번 코인(수익)</b>이 가장 많은 나라가 이겨요.</p></div>
+  </div>
+  <div class="sec-h"><h2>상품 만드는 법</h2><span>처음 값 기준</span></div>
+  <div class="recipes">${PK.map(p=>`<div><div class="big">${PROD[p].icon}</div><b>${PROD[p].name}</b><div class="recipe" style="justify-content:center;margin:4px 0">${needChips(p)}</div><span class="num" style="font-size:14px;color:var(--muted)">약 ${PROD[p].base}코인</span></div>`).join('')}</div>
+  <div class="sec-h"><h2>시장의 비밀</h2></div>
+  <ul class="tips">
+    <li><b>시장 창고에 자원이 적으면 값이 올라요.</b> 모두가 사려고 하면 금방 비싸져요. (수요↑ 공급↓)</li>
+    <li><b>같은 상품을 많이 팔면 값이 내려가요.</b> 다들 빵만 팔면 빵 값이 떨어져요. (공급↑)</li>
+    <li><b>시장에 자원을 팔면 산 값보다 싸게 받아요.</b> 다른 나라와 직접 무역하면 더 이득일 수 있어요.</li>
+    <li><b>먼저 한 나라가 먼저 가져가요.</b> 두 나라가 동시에 마지막 자원을 사면 먼저 누른 나라만 성공해요.</li>
+    <li>마지막에 남은 자원과 상품은 점수가 되지 않아요. 끝나기 전에 팔아요!</li>
+  </ul>`;
+}
+
+function setupHTML(){
+  const specOpts = sel => RK.map(k=>`<option value="${k}" ${k===sel?'selected':''}>${RES[k].icon} ${RES[k].name}</option>`).join('');
+  return `
+  <div class="bar"><div class="bar-in"><div class="brand">⚓ 세계 무역 항구 <small>6학년 무역 게임</small></div><span class="spacer"></span>${connBadge()}<button class="bbtn" id="cancelnew">돌아가기</button></div></div>
+  <div class="wrap">
+    <section class="hero">
+      <div>
+        <h1>자원을 사고팔아<br><em>무역왕</em>이 되어라!</h1>
+        <p>나라마다 가진 자원이 달라요. 서로 무역해서 필요한 자원을 모으고, 상품을 만들어 팔아 가장 많은 수익을 낸 나라가 이겨요.</p>
+      </div>
+      <div class="map">${setup.list.slice(0,4).map((p,i)=>`<div style="--c:${cv('--t'+(i+1))}"><b>${esc(p.name)}</b><span>${RES[p.spec].icon} ${RES[p.spec].name}이(가) 많이 나요</span></div>`).join('')}</div>
+    </section>
+    <div class="sec-h"><h2>게임 준비</h2><span>선생님이 정해 주세요</span></div>
+    <div class="card">
+      <div class="setgrid">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="field"><span class="flab">모둠(나라) 수</span><div class="seg" id="s-teams">${[3,4,5,6].map(n=>`<button aria-pressed="${setup.teams===n}" data-v="${n}">${n}</button>`).join('')}</div></div>
+          <div class="field"><span class="flab">라운드 수</span><div class="seg" id="s-rounds">${[3,4,5,6].map(n=>`<button aria-pressed="${setup.rounds===n}" data-v="${n}">${n}</button>`).join('')}</div></div>
+          <div class="field"><span class="flab">라운드 시간(분)</span><div class="seg" id="s-min">${[3,5,7,10].map(n=>`<button aria-pressed="${setup.minutes===n}" data-v="${n}">${n}분</button>`).join('')}</div></div>
+          <div class="field"><span class="flab">뉴스 사건 (2라운드부터 가뭄·풍년 등)</span><div class="seg" id="s-ev"><button aria-pressed="${setup.events}" data-v="1">켜기</button><button aria-pressed="${!setup.events}" data-v="0">끄기</button></div></div>
+        </div>
+        <div class="field"><span class="flab">나라 이름과 특산물</span>
+          ${setup.list.slice(0,setup.teams).map((p,i)=>`<div class="trow2" style="--c:${cv('--t'+(i+1))}"><span class="dot"></span><input id="tn${i}" value="${esc(p.name)}" maxlength="12" aria-label="${i+1}번 나라 이름"><select id="ts${i}" aria-label="${i+1}번 나라 특산물">${specOpts(p.spec)}</select></div>`).join('')}
+          <p class="note" style="margin:4px 0 0">시작: 각 나라 ${START_MONEY}코인, 특산물 ${START_SPEC}개, 다른 자원 ${START_OTHER}개씩</p>
+        </div>
+      </div>
+      <button class="start" id="go">${G?'새 게임 시작 ⚓':'게임 만들기 ⚓'}</button>
+      ${G?`<p class="note">같은 방 코드(${esc(ROOM)})로 새 게임이 시작돼요. 모둠 기기는 나라를 다시 골라요.</p>`:''}
+    </div>
+    <div class="sec-h"><h2>게임 방법</h2></div>
+    ${rulesHTML()}
+  </div>`;
+}
+function readNames(){ for(let i=0;i<setup.teams;i++){ const n=$('#tn'+i), s=$('#ts'+i); if(n) setup.list[i].name=n.value; if(s) setup.list[i].spec=s.value; } }
+
+function pickHTML(){
+  const st=G.base;
+  return `
+  <div class="bar"><div class="bar-in"><div class="brand">⚓ 세계 무역 항구</div><span class="round">${G.round} / ${G.settings.rounds} 라운드</span><span class="spacer"></span>${connBadge()}</div></div>
+  <div class="wrap">
+    <div class="sec-h"><h2>우리 모둠은 어느 나라인가요?</h2><span>이 기기에서 쓸 나라를 골라요</span></div>
+    <div class="roles">${st.teams.map(t=>`<button class="role" data-role="${t.id}" style="--c:${cv(t.color)}"><b>${esc(t.name)}</b><span>${RES[t.spec].icon} ${RES[t.spec].name}이(가) 많이 나는 나라</span></button>`).join('')}
+    </div>
+    <div class="row-btns" style="justify-content:flex-start;margin-top:16px"><button class="btn" id="leave">다른 방으로 나가기</button></div>
+  </div>`;
+}
+
+function newsHTML(){
+  return G.news?`<div class="news"><span class="tag">속보</span><div><b>${esc(G.news.title)}</b><p>${esc(G.news.text)}</p></div></div>`
+    :`<div class="news"><span class="tag">안내</span><div><b>${G.round===1?'첫 라운드예요':'조용한 시장'}</b><p>${G.round===1?'시장에서 사고팔고, 상품을 만들고, 다른 나라에 무역을 제안해 보세요.':'이번 라운드에는 특별한 뉴스가 없어요.'}</p></div></div>`;
+}
+const lastRoundHTML = () => G.round===G.settings.rounds && G.phase==='play' ? `<div class="lastround">마지막 라운드! 남은 자원과 상품은 점수가 되지 않아요. 모두 팔아서 코인으로 바꾸세요.</div>`:'';
+
+// ----- 선생님 화면 -----
+function teacherHTML(){
+  const st=VIEW.st, m=st.market, last=G.round===G.settings.rounds, actIds=new Set(ACTS.map(a=>a.id)), voided=new Set(ACTS.filter(a=>a.type==='void').map(a=>a.target));
+  const openOffers=Object.values(st.offers||{}).filter(o=>o.status==='open');
+  return `
+  <div class="bar"><div class="bar-in">
+    <div class="brand">⚓ 세계 무역 항구</div>
+    <span class="round">${G.round} / ${G.settings.rounds} 라운드</span>
+    <div class="timer" id="timer"><span class="t" id="tt">${fmtTime(timeLeft())}</span><button class="bbtn" id="tgo">${G.timer&&G.timer.endsAt?'⏸ 멈춤':'▶ 시작'}</button></div>
+    <span class="spacer"></span>
+    ${connBadge()}
+    <button class="bbtn" id="how">게임 방법</button>
+    <button class="bbtn" id="joininfo">참여 코드 ${esc(ROOM)}</button>
+    <button class="bbtn main" id="endr" ${G.phase!=='play'?'disabled':''}>${last?'게임 끝내기':'라운드 끝내기'} →</button>
+  </div></div>
+  <div class="wrap">
+    ${newsHTML()}${lastRoundHTML()}
+    <div class="sec-h"><h2>세계 시장 · 자원</h2><span>창고가 비면 값이 올라요 · 빨강 ▲ 오름 / 파랑 ▼ 내림</span></div>
+    <div class="board">${RK.map(k=>{ const s=m.res[k], p=curRes(m,k);
+      return `<div class="tile" style="--c:${cv(RES[k].c)}">
+        <div class="nm"><span class="ic">${RES[k].icon}</span>${RES[k].name}</div>
+        <div class="pr"><span class="lbl">살 때</span><span>${s>0?`<span class="v num">${p}</span>`:'<span class="v sm soldout">품절</span>'} ${chg(p, G.roundStart&&G.roundStart[k])}</span></div>
+        <div class="pr"><span class="lbl">팔 때</span><span class="v sm num">${resSellPrice(k,s)}</span></div>
+        <div class="stock"><span>시장 창고</span><span class="num">${s}개</span></div>
+        <div class="stockbar"><i style="width:${Math.min(100,s/20*100)}%"></i></div>
+        ${spark(sparkSeries(k), cv(RES[k].c))}
+      </div>`;}).join('')}</div>
+    <div class="sec-h"><h2>상품 시세</h2><span>같은 상품을 많이 팔면 값이 내려가요</span></div>
+    <div class="board prod">${PK.map(p=>{ const v=curProd(m,p);
+      return `<div class="tile" style="--c:var(--ink)">
+        <div class="nm"><span class="ic">${PROD[p].icon}</span>${PROD[p].name}</div>
+        <div class="recipe">${needChips(p)}</div>
+        <div class="pr"><span class="lbl">팔 때</span><span><span class="v num">${v}</span> ${chg(v, G.roundStart&&G.roundStart[p])}</span></div>
+        ${spark(sparkSeries(p), 'var(--accent)')}
+      </div>`;}).join('')}</div>
+
+    <div class="sec-h"><h2>나라들</h2><span>카드를 누르면 그 나라 대신 거래할 수 있어요</span></div>
+    <div class="teams">${st.teams.map(t=>`<button class="team" data-team="${t.id}" style="--c:${cv(t.color)}">
+        <div class="hd"><h3>${esc(t.name)}</h3><span class="sp">${RES[t.spec].icon} ${RES[t.spec].name} 특산</span></div>
+        <div class="bd">
+          <div class="money"><span class="v">${t.money}<small> 코인</small></span>${profitHTML(t)}</div>
+          <div class="inv">${invChips(t)}</div>
+          <div class="go">대신 거래하기 →</div>
+        </div></button>`).join('')}</div>
+
+    <div class="sec-h"><h2>진행 중인 무역 제안</h2><span>받은 나라가 수락하면 바로 바뀌어요</span></div>
+    <div class="log">${openOffers.length?`<ol>${openOffers.map(o=>`<li><span>📨 <b>${esc(st.teams[o.from].name)}</b> → <b>${esc(st.teams[o.to].name)}</b> : [${describe(o.give)}] ↔ [${describe(o.get)}]</span></li>`).join('')}</ol>`:`<p class="empty" style="margin:8px 0">기다리는 제안이 없어요.</p>`}</div>
+
+    <div class="sec-h"><h2>무역 일지</h2><span>잘못 누른 거래는 [취소]로 되돌릴 수 있어요</span></div>
+    <div class="log"><ol>${st.log.slice(0,80).map(l=>`<li><span class="r">R${l.r}</span><span>${esc(l.t)}</span>${actIds.has(l.id)&&!voided.has(l.id)&&G.phase==='play'?`<button class="vbtn" data-void="${l.id}">취소</button>`:''}</li>`).join('')}</ol></div>
+  </div>`;
+}
+
+// ----- 거래 패널 (모둠 화면 · 선생님 대신 거래 공용) -----
+function panelHTML(tid, asTeacher){
+  const st=VIEW.st, m=st.market, t=st.teams[tid];
+  const tabs=[['market','🏪 시장','자원 사고팔기'],['make','🏭 만들기','상품 생산'],['sell','💰 판매','상품 팔기'],['trade','🤝 무역','다른 나라와']];
+  let body='';
+  if(ui.tab==='market'){
+    const k=ui.res, q=ui.qty, c=buyQuote(m,k,q), v=sellResQuote(m,k,q);
+    const buyWhy = c===null ? `시장 창고에 ${RES[k].name}이(가) ${m.res[k]}개뿐이에요.` : c>t.money ? `코인이 ${c-t.money}개 모자라요.` : '';
+    const sellWhy = t.inv[k]<q ? `${RES[k].name}이(가) ${t.inv[k]}개뿐이에요.` : '';
+    body=`<div class="help">시장 창고에 자원이 적을수록 비싸요. 하나 살 때마다 값이 조금씩 올라가요.</div>
+      <div class="pick">${RK.map(r=>`<button data-res="${r}" aria-pressed="${r===k}"><span class="n">${RES[r].icon} ${RES[r].name}</span><span class="s">살 때 <b class="num">${m.res[r]>0?curRes(m,r):'품절'}</b> · 팔 때 <b class="num">${resSellPrice(r,m.res[r])}</b></span><span class="s">우리 ${t.inv[r]}개 · 창고 ${m.res[r]}개</span></button>`).join('')}</div>
+      <div class="qty"><span class="lbl">몇 개?</span>${stepper('qty',q)}</div>
+      <div class="acts">
+        <div><button class="act buy" data-do="buy" ${buyWhy?'disabled':''} style="width:100%">사기<small>총 ${c===null?'-':c}코인 내기</small></button><div class="why">${buyWhy}</div></div>
+        <div><button class="act sell" data-do="sellres" ${sellWhy?'disabled':''} style="width:100%">팔기<small>총 ${v}코인 받기</small></button><div class="why">${sellWhy}</div></div>
+      </div>`;
+  } else if(ui.tab==='make'){
+    const p=ui.make, q=ui.qty, mx=canMake(t,p);
+    const why = mx<q ? '재료가 모자라요: '+Object.entries(PROD[p].need).filter(([k,n])=>t.inv[k]<n*q).map(([k,n])=>`${RES[k].name} ${n*q-t.inv[k]}개`).join(', ') : '';
+    body=`<div class="help">재료를 모으면 상품을 만들 수 있어요. 재료는 사라지고 상품이 생겨요.</div>
+      <div class="pick">${PK.map(r=>`<button data-make="${r}" aria-pressed="${r===p}"><span class="n">${PROD[r].icon} ${PROD[r].name}</span><span class="recipe">${needChips(r)}</span><span class="s">지금 ${canMake(t,r)}개 만들 수 있어요</span></button>`).join('')}</div>
+      <div class="qty"><span class="lbl">몇 개?</span>${stepper('qty',q)}</div>
+      <div><button class="act ok" data-do="make" ${why?'disabled':''} style="width:100%">${PROD[p].icon} ${PROD[p].name} ${q}개 만들기<small>${PROD[p].note}</small></button><div class="why">${why}</div></div>`;
+  } else if(ui.tab==='sell'){
+    const p=ui.sell, q=ui.qty, v=sellProdQuote(m,p,q);
+    const why = t.prod[p]<q ? `${PROD[p].name}이(가) ${t.prod[p]}개 있어요.` : '';
+    body=`<div class="help">같은 상품이 많이 팔릴수록 값이 내려가요. 다른 나라가 먼저 팔면 우리 값도 내려가요.</div>
+      <div class="pick">${PK.map(r=>`<button data-sell="${r}" aria-pressed="${r===p}"><span class="n">${PROD[r].icon} ${PROD[r].name}</span><span class="s">지금 값 <b class="num">${curProd(m,r)}</b>코인</span><span class="s">우리 ${t.prod[r]}개</span></button>`).join('')}</div>
+      <div class="qty"><span class="lbl">몇 개?</span>${stepper('qty',q)}</div>
+      <div><button class="act sell" data-do="sellprod" ${why?'disabled':''} style="width:100%">${PROD[p].name} ${q}개 팔기<small>총 ${v}코인 받기</small></button><div class="why">${why}</div></div>`;
+  } else {
+    const b = ui.partner===null||ui.partner===tid ? null : st.teams[ui.partner];
+    const give=cleanBundle(ui.give), get=cleanBundle(ui.get);
+    let why = !b ? '무역할 나라를 고르세요.' : (isEmptyBundle(give)&&isEmptyBundle(get)) ? '주고받을 것을 정하세요.' : (lacks(t,give)||lacks(b,get));
+    const col=(who, obj, side, title)=>`<div class="tcol" style="--c:${cv(who.color)}"><h3>${title}</h3>
+      <div class="trow"><span>🪙 코인 <span class="have">(${who.money})</span></span><input class="coinin" type="number" min="0" inputmode="numeric" id="coin-${side}" value="${obj.coin||0}" aria-label="${side==='give'?'주는':'받는'} 코인"></div>
+      ${RK.map(k=>`<div class="trow"><span>${RES[k].icon} ${RES[k].name} <span class="have">(${who.inv[k]})</span></span>${stepper(side+':'+k, obj[k]||0)}</div>`).join('')}</div>`;
+    body=`<div class="help">${asTeacher?'두 나라가 말로 약속했다면 바로 무역할 수 있어요.':'먼저 상대 모둠과 이야기해서 약속을 정하세요. 제안을 보내면 상대 나라 화면에 나타나고, 상대가 <b>수락</b>하면 바로 바뀌어요.'}</div>
+      <div class="flab">누구와 무역할까요?</div>
+      <div class="pick">${st.teams.filter(o=>o.id!==tid).map(o=>`<button data-partner="${o.id}" aria-pressed="${ui.partner===o.id}" style="border-left:8px solid ${cv(o.color)}"><span class="n">${esc(o.name)}</span><span class="s">${RES[o.spec].icon} ${RES[o.spec].name} 특산 · ${o.money}코인</span></button>`).join('')}</div>
+      ${b?`<div class="trade">${col(t, ui.give, 'give', `${esc(t.name)}이(가) 주는 것`)}${col(b, ui.get, 'get', `${esc(b.name)}이(가) 주는 것`)}</div>`:''}
+      <div><button class="act ok" data-do="${asTeacher?'tradenow':'offer'}" id="a-trade" ${why?'disabled':''} style="width:100%">${asTeacher?'🤝 바로 무역하기':'📨 무역 제안 보내기'}<small>${b?`${esc(t.name)} ↔ ${esc(b.name)}`:'상대 나라를 먼저 고르세요'}</small></button><div class="why" id="trade-why">${b?why:''}</div></div>`;
+  }
+  return `<div class="tabs" role="tablist">${tabs.map(([id,l,s])=>`<button role="tab" data-tab="${id}" aria-selected="${ui.tab===id}">${l}<span>${s}</span></button>`).join('')}</div>${body}`;
+}
+function stepper(id, val){ return `<span class="step"><button data-step="${id}" data-d="-1" aria-label="하나 빼기">−</button><span class="val">${val}</span><button data-step="${id}" data-d="1" aria-label="하나 더하기">+</button></span>`; }
+
+function renderSheet(){
+  const m=$('#modal');
+  if(ui.sheetTeam===null || !VIEW || G.phase!=='play' || ROLE!=='teacher'){ if(m.dataset.kind==='sheet') closeModal(true); return; }
+  const t=VIEW.st.teams[ui.sheetTeam];
+  m.dataset.kind='sheet';
+  m.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t.name)} 거래" style="--c:${cv(t.color)}">
+    <div class="top"><h2>${esc(t.name)}</h2><span class="m">${t.money} 코인</span><button class="x" data-close="1" aria-label="닫기">✕</button></div>
+    <div class="inner"><div class="mine">${RK.map(k=>`<span class="chip">${RES[k].icon} ${RES[k].name} <b class="num">${t.inv[k]}</b></span>`).join('')}${PK.filter(p=>t.prod[p]).map(p=>`<span class="chip">${PROD[p].icon} ${PROD[p].name} <b class="num">${t.prod[p]}</b></span>`).join('')}</div>
+    ${panelHTML(ui.sheetTeam, true)}</div></div>`;
+  m.hidden=false;
+}
+function closeModal(silent){ const m=$('#modal'); m.hidden=true; m.innerHTML=''; m.dataset.kind=''; if(!silent) ui.sheetTeam=null; }
+
+// ----- 모둠 화면 -----
+function teamHTML(tid){
+  const st=VIEW.st, m=st.market, t=st.teams[tid];
+  if(!t) return pickHTML();
+  const offers=Object.values(st.offers||{}).filter(o=>o.status==='open');
+  const inbox=offers.filter(o=>o.to===tid), outbox=offers.filter(o=>o.from===tid);
+  const rank=[...st.teams].sort((a,b)=>b.money-a.money).findIndex(x=>x.id===tid)+1;
+  return `
+  <div class="bar" style="--c:${cv(t.color)}"><div class="bar-in">
+    <div class="brand">⚓</div><span class="mepill">${esc(t.name)}</span>
+    <span class="round">${G.round} / ${G.settings.rounds} 라운드</span>
+    <div class="timer" id="timer"><span class="t" id="tt">${fmtTime(timeLeft())}</span></div>
+    <span class="spacer"></span>${connBadge()}
+    <button class="bbtn" id="how">게임 방법</button>
+    <button class="bbtn" id="switch">나라 바꾸기</button>
+  </div></div>
+  <div class="wrap">
+    ${newsHTML()}${lastRoundHTML()}
+    <div class="split">
+      <div class="col">
+        <section class="panel mine-card" style="--c:${cv(t.color)}">
+          <div class="ph"><h2>우리 나라 창고</h2><span>${RES[t.spec].icon} ${RES[t.spec].name} 특산 · 지금 ${rank}등</span></div>
+          <div class="pb">
+            <div class="money"><span class="bigmoney">${t.money}<small> 코인</small></span>${profitHTML(t)}</div>
+            <div class="mine">${RK.map(k=>`<span class="chip">${RES[k].icon} ${RES[k].name} <b class="num">${t.inv[k]}</b></span>`).join('')}${PK.map(p=>`<span class="chip ${t.prod[p]?'':'zero'}">${PROD[p].icon} ${PROD[p].name} <b class="num">${t.prod[p]}</b></span>`).join('')}</div>
+          </div>
+        </section>
+        ${inbox.length||outbox.length?`<section class="panel"><div class="ph"><h2>무역 제안</h2><span>${inbox.length}개 받음</span></div><div class="pb">
+          ${inbox.map(o=>{ const f=st.teams[o.from]; const w=lacks(t,o.get)||lacks(f,o.give);
+            return `<div class="offer" style="--c:${cv(f.color)}"><div class="who">📨 ${esc(f.name)}의 제안</div>
+              <div class="xch"><div><small>${esc(f.name)}이(가) 줘요</small>${describe(o.give)}</div><span>↔</span><div><small>우리가 줘요</small>${describe(o.get)}</div></div>
+              ${w?`<div class="why" style="text-align:left">${w}</div>`:''}
+              <div class="btns"><button class="sbtn yes" data-accept="${o.id}" ${w?'disabled':''}>수락하기</button><button class="sbtn no" data-decline="${o.id}">거절하기</button></div></div>`; }).join('')}
+          ${outbox.map(o=>{ const to=st.teams[o.to];
+            return `<div class="offer" style="--c:${cv(to.color)}"><div class="who">⏳ ${esc(to.name)}의 답을 기다려요</div>
+              <div class="xch"><div><small>우리가 줘요</small>${describe(o.give)}</div><span>↔</span><div><small>${esc(to.name)}이(가) 줘요</small>${describe(o.get)}</div></div>
+              <div class="btns"><button class="sbtn no" data-cancel="${o.id}">제안 취소</button></div></div>`; }).join('')}
+        </div></section>`:''}
+        <section class="panel"><div class="ph"><h2>거래하기</h2></div><div class="pb">${panelHTML(tid,false)}</div></section>
+      </div>
+      <div class="col">
+        <section class="panel"><div class="ph"><h2>세계 시장</h2><span>▲ 오름 ▼ 내림</span></div><div class="pb"><div class="tw">
+          <table class="mtable"><thead><tr><th>자원</th><th>살 때</th><th>팔 때</th><th>창고</th><th>변화</th></tr></thead><tbody>
+          ${RK.map(k=>{ const p=curRes(m,k); return `<tr><td>${RES[k].icon} ${RES[k].name}</td><td>${m.res[k]>0?p:'<span class="soldout">품절</span>'}</td><td>${resSellPrice(k,m.res[k])}</td><td>${m.res[k]}</td><td>${chg(p,G.roundStart&&G.roundStart[k])}</td></tr>`; }).join('')}
+          </tbody></table>
+          <table class="mtable" style="margin-top:8px"><thead><tr><th>상품</th><th>팔 때</th><th>변화</th></tr></thead><tbody>
+          ${PK.map(p=>{ const v=curProd(m,p); return `<tr><td>${PROD[p].icon} ${PROD[p].name}</td><td>${v}</td><td>${chg(v,G.roundStart&&G.roundStart[p])}</td></tr>`; }).join('')}
+          </tbody></table></div></div></section>
+        <section class="panel"><div class="ph"><h2>다른 나라</h2><span>누가 무엇을 가졌을까?</span></div><div class="pb"><div class="others">
+          ${st.teams.filter(o=>o.id!==tid).map(o=>`<div class="other" style="--c:${cv(o.color)}"><b>${esc(o.name)}</b><span class="note">${RES[o.spec].icon} ${RES[o.spec].name} 특산</span><span class="num">${o.money}코인</span><div class="inv" style="grid-column:1/-1">${invChips(o,true)}</div></div>`).join('')}
+        </div></div></section>
+        <section class="panel"><div class="ph"><h2>무역 일지</h2></div><div class="pb" style="padding-top:4px"><div class="log" style="box-shadow:none;padding:0;max-height:260px"><ol>${st.log.slice(0,40).map(l=>`<li><span class="r">R${l.r}</span><span>${esc(l.t)}</span></li>`).join('')}</ol></div></div></section>
+      </div>
+    </div>
+  </div>`;
+}
+
+function rankHTML(st){
+  return `<div class="rank">${[...st.teams].sort((a,b)=>b.money-a.money).map((t,i)=>`<div class="rk" style="--c:${cv(t.color)}"><span class="p">${i+1}</span><div><div class="nm">${esc(t.name)}</div></div><div class="val">${t.money}<small>수익 ${t.money-START_MONEY>0?'+':''}${t.money-START_MONEY}</small></div></div>`).join('')}</div>`;
+}
+function priceChangeHTML(){
+  return `<div class="pick">${RK.map(k=>`<div class="tile" style="--c:${cv(RES[k].c)}"><div class="nm" style="font-size:18px">${RES[k].icon} ${RES[k].name}</div><div class="pr"><span class="lbl num">${G.roundStart[k]} →</span><span><span class="v sm num">${G.endSnapshot[k]}</span> ${chg(G.endSnapshot[k], G.roundStart[k])}</span></div></div>`).join('')}
+      ${PK.map(p=>`<div class="tile" style="--c:var(--ink)"><div class="nm" style="font-size:18px">${PROD[p].icon} ${PROD[p].name}</div><div class="pr"><span class="lbl num">${G.roundStart[p]} →</span><span><span class="v sm num">${G.endSnapshot[p]}</span> ${chg(G.endSnapshot[p], G.roundStart[p])}</span></div></div>`).join('')}</div>`;
+}
+function teamRoundEndHTML(){
+  const t=G.base.teams[ROLE];
+  return `
+  <div class="bar"><div class="bar-in"><div class="brand">⚓</div><span class="mepill" style="--c:${cv(t.color)}">${esc(t.name)}</span><span class="round">${G.round}라운드 끝</span><span class="spacer"></span>${connBadge()}<button class="bbtn" id="switch">나라 바꾸기</button></div></div>
+  <div class="wrap">
+    <div class="waitbox"><b>${G.round}라운드 끝!</b>선생님이 다음 라운드를 시작하면 이 화면이 저절로 바뀌어요.</div>
+    <div class="sec-h"><h2>이번 라운드 가격 변화</h2></div>${priceChangeHTML()}
+    <div class="help" style="margin-top:12px">💬 생각해 보기: 값이 가장 많이 오른 것은 무엇인가요? 왜 올랐을까요?</div>
+    <div class="sec-h"><h2>지금 순위</h2></div>${rankHTML(G.base)}
+  </div>`;
+}
+function showRoundEnd(){
+  const m=$('#modal'); m.dataset.kind='roundEnd';
+  m.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="라운드 결과">
+    <div class="top" style="background:var(--ink)"><h2>${G.round}라운드 끝!</h2></div>
+    <div class="inner">
+      <div class="flab">이번 라운드 가격 변화</div>${priceChangeHTML()}
+      <div class="help">💬 생각해 보기: 값이 가장 많이 오른 것은 무엇인가요? 왜 올랐을까요?</div>
+      <div class="flab">지금 순위</div>${rankHTML(G.base)}
+      <div class="help">다음 라운드: 시장 창고와 상품 값이 처음 값 쪽으로 절반쯤 돌아가고, 모든 나라에 특산물 ${PER_ROUND}개가 들어와요${G.settings.events?'. 새 뉴스도 나와요':''}.</div>
+      <div class="row-btns"><button class="btn main" id="next">${G.round+1}라운드 시작 →</button></div>
+    </div></div>`;
+  m.hidden=false;
+}
+
+function endHTML(){
+  const st=G.base, rk=[...st.teams].sort((a,b)=>b.money-a.money), maxP=Math.max(1,...rk.map(t=>Math.abs(t.money-START_MONEY)));
+  const medal=['🥇','🥈','🥉'];
+  return `
+  <div class="bar"><div class="bar-in"><div class="brand">⚓ 세계 무역 항구</div><span class="round">게임 끝</span><span class="spacer"></span>${connBadge()}${ROLE==='teacher'?`<button class="bbtn main" id="again">새 게임</button>`:''}</div></div>
+  <div class="wrap">
+    <section class="hero" style="grid-template-columns:1fr"><div><h1><em>${esc(rk[0].name)}</em>이(가)<br>무역왕이에요!</h1><p>${G.settings.rounds}라운드 동안 가장 많은 수익(번 코인)을 낸 나라예요.</p></div></section>
+    <div class="endgrid">
+      <div>
+        <div class="sec-h"><h2>최종 순위</h2><span>수익 = 마지막 코인 − 처음 ${START_MONEY}코인</span></div>
+        <div class="rank">${rk.map((t,i)=>{ const pf=t.money-START_MONEY; return `<div class="rk ${i===0?'first':''}" style="--c:${cv(t.color)}"><span class="p">${medal[i]||i+1}</span><div><div class="nm">${esc(t.name)}</div><div class="bar2"><i style="width:${Math.max(0,pf)/maxP*100}%"></i></div><div class="note">상품 ${t.made}개 생산 · 무역 ${t.trades}번</div></div><div class="val">${pf>0?'+':''}${pf}<small>${t.money}코인</small></div></div>`; }).join('')}</div>
+      </div>
+      <div>
+        <div class="sec-h"><h2>자원 값의 변화</h2><span>라운드가 끝날 때의 시장 값</span></div>
+        <div class="chartbox"><canvas id="chart" aria-label="라운드별 자원 가격 그래프"></canvas>
+          <div class="legend">${RK.map(k=>`<span style="--c:${cv(RES[k].c)}"><i></i>${RES[k].icon} ${RES[k].name}</span>`).join('')}</div></div>
+      </div>
+    </div>
+    <div class="sec-h"><h2>함께 이야기해요</h2></div>
+    <div class="qs">
+      <div><b>값은 왜 바뀌었을까?</b><p>그래프에서 값이 크게 오른 자원을 찾아보세요. 그때 시장에서 무슨 일이 있었나요? 사려는 나라가 많았나요, 뉴스가 있었나요?</p></div>
+      <div><b>무역을 안 했다면?</b><p>우리 나라 특산물만으로 만들 수 있는 상품이 있었나요? 무역이 왜 필요한지 우리 나라의 경험으로 말해 보세요.</p></div>
+      <div><b>다음엔 어떤 전략을?</b><p>모두 같은 상품을 팔았을 때 값은 어떻게 됐나요? 다시 한다면 무엇을 만들고 언제 팔지 계획을 세워 보세요.</p></div>
+    </div>
+    <div class="sec-h"><h2>무역 일지</h2></div>
+    <div class="log"><ol>${st.log.map(l=>`<li><span class="r">R${l.r}</span><span>${esc(l.t)}</span></li>`).join('')}</ol></div>
+  </div>`;
+}
+function drawChart(){
+  const c=$('#chart'); if(!c) return;
+  const dpr=window.devicePixelRatio||1, W=c.clientWidth, H=c.clientHeight; if(!W) return; c.width=W*dpr; c.height=H*dpr;
+  const g=c.getContext('2d'); g.scale(dpr,dpr);
+  const css=getComputedStyle(document.documentElement), col=v=>css.getPropertyValue(v).trim();
+  const data=RK.map(k=>G.base.roundHist[k]), n=data[0].length;
+  const mx=Math.max(20,...data.flat()), mn=0, L=36,R=12,Tp=12,B=28;
+  const x=i=>L+(n<=1?0:i/(n-1))*(W-L-R), y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
+  g.font='12px "IBM Plex Mono", monospace'; g.fillStyle=col('--muted'); g.strokeStyle=col('--line'); g.lineWidth=1;
+  const step=mx>40?10:5;
+  for(let v=0; v<=mx; v+=step){ g.beginPath(); g.moveTo(L,y(v)); g.lineTo(W-R,y(v)); g.stroke(); g.textAlign='right'; g.textBaseline='middle'; g.fillText(v,L-6,y(v)); }
+  g.textAlign='center'; g.textBaseline='top';
+  for(let i=0;i<n;i++) g.fillText(i===0?'시작':`R${i}`, x(i), H-B+8);
+  RK.forEach((k,j)=>{ const d=data[j], color=col(RES[k].c); g.strokeStyle=color; g.fillStyle=color; g.lineWidth=3; g.beginPath(); d.forEach((v,i)=>i?g.lineTo(x(i),y(v)):g.moveTo(x(i),y(v))); g.stroke(); d.forEach((v,i)=>{ g.beginPath(); g.arc(x(i),y(v),i===n-1?5:3,0,Math.PI*2); g.fill(); }); });
+}
+function showHow(){
+  const m=$('#modal'); m.dataset.kind='how';
+  m.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="게임 방법" style="max-width:1000px"><div class="top" style="background:var(--ink)"><h2>게임 방법</h2><button class="x" data-close="1" aria-label="닫기">✕</button></div>
+    <div class="inner">${rulesHTML()}
+    <div class="row-btns" style="margin-top:8px">${ROLE==='teacher'?`<button class="btn" id="reset">새 게임 만들기</button>`:''}<button class="btn main" data-close="1">돌아가기</button></div></div></div>`;
+  m.hidden=false;
+}
+function confirmBox(text, yes, onYes){
+  const m=$('#modal'); m.dataset.kind='confirm';
+  m.innerHTML=`<div class="sheet confirm" role="alertdialog" aria-modal="true"><div class="inner" style="padding-top:20px"><p>${text}</p><div class="row-btns"><button class="btn" id="no">아니요</button><button class="btn main" id="yes">${yes}</button></div></div></div>`;
+  m.hidden=false;
+  $('#yes').onclick=()=>{ closeModal(); onYes(); };
+  $('#no').onclick=()=>{ closeModal(); render(); };
+}
+
+// ================= 입력 처리 =================
+function actingTeam(){ return ROLE==='teacher' ? ui.sheetTeam : ROLE; }
+function refreshPanel(){ if(ROLE==='teacher') renderSheet(); else render(); }
+document.addEventListener('click', e=>{
+  const el=e.target.closest('button'); if(!el) return;
+  const d=el.dataset;
+  if(d.close){ closeModal(); return; }
+  if(d.role!==undefined){ ROLE = +d.role; lsSet(TEAM_KEY,{room:ROOM, role:ROLE}); ui.tab='market'; ui.partner=null; ui.give={}; ui.get={}; ui.qty=1; render(); return; }
+  if(d.team!==undefined){ ui.sheetTeam=+d.team; ui.tab='market'; ui.qty=1; ui.partner=null; ui.give={}; ui.get={}; renderSheet(); return; }
+  if(d.tab){ ui.tab=d.tab; ui.qty=1; refreshPanel(); return; }
+  if(d.res){ ui.res=d.res; ui.qty=1; refreshPanel(); return; }
+  if(d.make){ ui.make=d.make; ui.qty=1; refreshPanel(); return; }
+  if(d.sell){ ui.sell=d.sell; ui.qty=1; refreshPanel(); return; }
+  if(d.partner!==undefined){ ui.partner=+d.partner; ui.give={}; ui.get={}; refreshPanel(); return; }
+  if(d.step){
+    const dd=+d.d, id=d.step;
+    if(id==='qty') ui.qty=Math.max(1,Math.min(30,ui.qty+dd));
+    else { const [side,k]=id.split(':'), o=side==='give'?ui.give:ui.get; o[k]=Math.max(0,Math.min(30,(o[k]||0)+dd)); }
+    refreshPanel(); return;
+  }
+  const tid=actingTeam();
+  if(d.do && tid!==null && tid!==undefined){
+    const q=ui.qty;
+    if(d.do==='buy') send({type:'buy', team:tid, k:ui.res, q});
+    else if(d.do==='sellres') send({type:'sellres', team:tid, k:ui.res, q});
+    else if(d.do==='make') send({type:'make', team:tid, p:ui.make, q});
+    else if(d.do==='sellprod') send({type:'sellprod', team:tid, p:ui.sell, q});
+    else if(d.do==='offer'){ send({type:'offer', team:tid, to:ui.partner, give:cleanBundle(ui.give), get:cleanBundle(ui.get)}); ui.give={}; ui.get={}; }
+    else if(d.do==='tradenow'){ const oid=newId();
+      const a1={type:'offer', id:oid, team:tid, to:ui.partner, give:cleanBundle(ui.give), get:cleanBundle(ui.get)};
+      const a2={type:'accept', id:newId(), team:ui.partner, offer:oid};
+      pending[a2.id]=0; ui.give={}; ui.get={};
+      ACTS.push({...a1, round:G.round, t:hostTime()}); hostAdd(a2);
+    }
+    ui.qty=1; return;
+  }
+  if(d.accept) { send({type:'accept', team:ROLE, offer:d.accept}); return; }
+  if(d.decline){ send({type:'decline', team:ROLE, offer:d.decline}); return; }
+  if(d.cancel) { send({type:'cancel', team:ROLE, offer:d.cancel}); return; }
+  if(d.void){ const id=d.void; confirmBox('이 거래를 취소할까요? 거래 전 상태로 돌아가요.', '취소하기', ()=>{ hostAdd({type:'void', id:newId(), target:id}); toast('거래를 취소했어요'); }); return; }
+  if(el.closest('#s-teams,#s-rounds,#s-min,#s-ev')){
+    readNames(); const box=el.parentElement.id;
+    if(box==='s-teams') setup.teams=+d.v; else if(box==='s-rounds') setup.rounds=+d.v; else if(box==='s-min') setup.minutes=+d.v; else setup.events=d.v==='1';
+    render(); return;
+  }
+  switch(el.id){
+    case 'go': createGame(); break;
+    case 'cancelnew': ui.makingNew=false; if(!G){ MODE=null; ROLE=null; } render(); break;
+    case 'how': showHow(); break;
+    case 'switch': ROLE=null; lsSet(TEAM_KEY,{room:ROOM, role:null}); closeModal(); render(); break;
+    case 'join': joinRoom($('#code').value); break;
+    case 'host': MODE='host'; ROLE='teacher'; ROOM=null; G=null; ACTS=[]; SEQ=0; ui.makingNew=true; render(); break;
+    case 'resume': resumeHost(); break;
+    case 'leave': leave(); break;
+    case 'joininfo': showJoin(); break;
+    case 'copyurl': try{ navigator.clipboard.writeText(joinURL()).then(()=>toast('주소를 복사했어요'),()=>toast('주소를 길게 눌러 복사하세요')); }catch(e){ toast('주소를 길게 눌러 복사하세요'); } break;
+    case 'tgo': toggleTimer(); break;
+    case 'endr': confirmBox(G.round>=G.settings.rounds?'게임을 끝내고 최종 순위를 볼까요? 남은 자원과 상품은 점수가 되지 않아요.':`${G.round}라운드를 끝낼까요? 모든 모둠의 거래가 멈춰요.`, '네, 끝내요', endRound); break;
+    case 'next': closeModal(true); nextRound(); break;
+    case 'again': case 'reset': confirmBox('새 게임을 만들까요? 지금 게임은 끝나고 모든 기기가 새 게임으로 넘어가요.', '새 게임 만들기', ()=>{ ui.makingNew=true; render(); }); break;
+  }
+});
+document.addEventListener('input', e=>{
+  const id=e.target.id; if(id!=='coin-give' && id!=='coin-get') return;
+  (id==='coin-give'?ui.give:ui.get).coin=Math.max(0,Math.floor(+e.target.value||0));
+  const tid=actingTeam(), st=VIEW&&VIEW.st; if(!st || ui.partner===null) return;
+  const give=cleanBundle(ui.give), get=cleanBundle(ui.get);
+  const why=(isEmptyBundle(give)&&isEmptyBundle(get))?'주고받을 것을 정하세요.':(lacks(st.teams[tid],give)||lacks(st.teams[ui.partner],get));
+  const btn=$('#a-trade'), w=$('#trade-why'); if(btn) btn.disabled=!!why; if(w) w.textContent=why;
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.id==='code'){ joinRoom(e.target.value); return; } if(e.key==='Escape' && !$('#modal').hidden && ['sheet','how','join'].includes($('#modal').dataset.kind)) closeModal(); });
+$('#modal').addEventListener('click', e=>{ if(e.target.id==='modal' && ['sheet','how','join'].includes($('#modal').dataset.kind)) closeModal(); });
+
+let wasZero=false;
+function updTimer(){
+  const tt=$('#tt'); if(!tt || !G) return;
+  const left=timeLeft(); tt.textContent=fmtTime(left);
+  const box=$('#timer'); const zero=left===0 && G.phase==='play' && !!(G.timer&&G.timer.endsAt);
+  if(box) box.classList.toggle('zero', zero);
+  if(zero && !wasZero) toast('⏰ 시간 끝! 거래를 마무리하세요'); wasZero=zero;
+}
+setInterval(updTimer, 500);
+window.addEventListener('resize', ()=>{ if(G && G.phase==='end') drawChart(); });
+
+(function boot(){
+  const room=(new URLSearchParams(location.search).get('room')||'').toUpperCase();
+  const t=lsGet(TEAM_KEY);
+  if(room && room.length===5) joinRoom(room);
+  else if(t && t.room) joinRoom(t.room);
+  else render();
+})();
+
+</script>
+</body>
+</html>
